@@ -1,22 +1,7 @@
-from __future__ import annotations
-
-import importlib
-import sys
-from pathlib import Path
-
 import pytest
 import torch
 
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-
-def _get_module():
-    # Pytest often prepends the test file's directory (e.g. `.../backprop`) to
-    # sys.path. In that case, `backprop/backprop.py` is importable as the
-    # top-level module `backprop` (not as `backprop.backprop`).
-    return importlib.import_module("backprop")
+import backpropagation
 
 
 def _maybe_call(mod, fn_name: str, *args, **kwargs):
@@ -38,7 +23,7 @@ def _assert_allclose(a: torch.Tensor,
 
 
 @pytest.mark.parametrize("dtype", [torch.float32])
-def test_backprop_simple_affine_backward_matches_torch(dtype):
+def test_backpropagation_simple_affine_backward_matches_torch(dtype):
     """
     Skeleton test:
     - PyTorch reference: y = (x @ w) + b, loss = (y * dout).sum()
@@ -64,10 +49,9 @@ def test_backprop_simple_affine_backward_matches_torch(dtype):
     dx_ref, dw_ref, db_ref = x.grad.detach(), w.grad.detach(), b.grad.detach()
 
     # Your implementation (skips until you implement)
-    mod = _get_module()
-    y, cache = _maybe_call(mod, "affine_forward", x.detach(), w.detach(),
+    y, cache = _maybe_call(backpropagation, "affine_forward", x.detach(), w.detach(),
                            b.detach())
-    dx, dw, db = _maybe_call(mod, "affine_backward", dout, cache)
+    dx, dw, db = _maybe_call(backpropagation, "affine_backward", dout, cache)
 
     _assert_allclose(y, y_ref.detach())
     _assert_allclose(dx, dx_ref)
@@ -76,7 +60,7 @@ def test_backprop_simple_affine_backward_matches_torch(dtype):
 
 
 @pytest.mark.parametrize("dtype", [torch.float32])
-def test_backprop_softmax_cross_entropy_backward_matches_torch(dtype):
+def test_backpropagation_softmax_cross_entropy_backward_matches_torch(dtype):
     """
     Skeleton test for a common backprop building block.
 
@@ -103,10 +87,9 @@ def test_backprop_softmax_cross_entropy_backward_matches_torch(dtype):
     loss_ref.backward()
     dlogits_ref = logits.grad.detach()
 
-    mod = _get_module()
-    loss, cache = _maybe_call(mod, "softmax_cross_entropy_forward",
+    loss, cache = _maybe_call(backpropagation, "softmax_cross_entropy_forward",
                               logits.detach(), targets)
-    dlogits = _maybe_call(mod, "softmax_cross_entropy_backward", cache)
+    dlogits = _maybe_call(backpropagation, "softmax_cross_entropy_backward", cache)
 
     # loss can be python float, 0-d tensor, etc. Normalize to tensor.
     loss_t = torch.as_tensor(loss, dtype=dtype, device=device)
